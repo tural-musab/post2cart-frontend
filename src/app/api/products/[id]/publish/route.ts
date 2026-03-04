@@ -19,12 +19,21 @@ export async function PATCH(
             body: JSON.stringify({ tenantId, price, status })
         });
 
-        if (!res.ok) {
-            throw new Error('Backend failed to publish product');
+        const text = await res.text();
+        let payload: unknown = {};
+        if (text) {
+            try {
+                payload = JSON.parse(text);
+            } catch {
+                payload = { error: text };
+            }
         }
 
-        const data = await res.json();
-        return NextResponse.json(data);
+        if (!res.ok) {
+            return NextResponse.json(payload, { status: res.status });
+        }
+
+        return NextResponse.json(payload);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

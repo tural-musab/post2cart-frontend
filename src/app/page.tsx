@@ -4,7 +4,33 @@ import { useState, useEffect } from "react";
 import { ExternalLink, Edit2, PlayCircle, Loader2 } from "lucide-react";
 
 const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
-const DASHBOARD_TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || DEFAULT_TENANT_ID;
+const TENANT_STORAGE_KEY = "post2cart.tenant_id";
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ENV_TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID;
+
+function isValidUuid(value: string): boolean {
+  return UUID_REGEX.test(value.trim());
+}
+
+function getFallbackTenantId(): string {
+  if (ENV_TENANT_ID && isValidUuid(ENV_TENANT_ID)) {
+    return ENV_TENANT_ID;
+  }
+  return DEFAULT_TENANT_ID;
+}
+
+function syncTenantToBrowser(tenantId: string) {
+  if (typeof window === "undefined") return;
+
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("tenantId") !== tenantId) {
+    url.searchParams.set("tenantId", tenantId);
+    const query = url.searchParams.toString();
+    window.history.replaceState({}, "", `${url.pathname}${query ? `?${query}` : ""}`);
+  }
+
+  window.localStorage.setItem(TENANT_STORAGE_KEY, tenantId);
+}
 
 interface Product {
   id: string;
@@ -21,15 +47,40 @@ export default function Dashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [tenantId, setTenantId] = useState(getFallbackTenantId());
+  const [tenantInput, setTenantInput] = useState(getFallbackTenantId());
+  const [tenantError, setTenantError] = useState<string | null>(null);
+  const [tenantReady, setTenantReady] = useState(false);
 
   useEffect(() => {
-    fetchProducts();
+    const fallbackTenantId = getFallbackTenantId();
+    let resolvedTenantId = fallbackTenantId;
+
+    const url = new URL(window.location.href);
+    const urlTenantId = url.searchParams.get("tenantId");
+    const storedTenantId = window.localStorage.getItem(TENANT_STORAGE_KEY);
+
+    if (urlTenantId && isValidUuid(urlTenantId)) {
+      resolvedTenantId = urlTenantId;
+    } else if (storedTenantId && isValidUuid(storedTenantId)) {
+      resolvedTenantId = storedTenantId;
+    }
+
+    syncTenantToBrowser(resolvedTenantId);
+    setTenantId(resolvedTenantId);
+    setTenantInput(resolvedTenantId);
+    setTenantReady(true);
   }, []);
 
-  const fetchProducts = async () => {
+  useEffect(() => {
+    if (!tenantReady) return;
+    fetchProducts(tenantId);
+  }, [tenantId, tenantReady]);
+
+  const fetchProducts = async (activeTenantId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products?tenantId=${encodeURIComponent(DASHBOARD_TENANT_ID)}`);
+      const res = await fetch(`/api/products?tenantId=${encodeURIComponent(activeTenantId)}`);
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData?.error || errorData?.message || "Failed to fetch products");
@@ -44,12 +95,24 @@ export default function Dashboard() {
     }
   };
 
+  const handleApplyTenant = () => {
+    const nextTenantId = tenantInput.trim();
+    if (!isValidUuid(nextTenantId)) {
+      setTenantError("Tenant ID must be a valid UUID.");
+      return;
+    }
+
+    setTenantError(null);
+    setTenantId(nextTenantId);
+    syncTenantToBrowser(nextTenantId);
+  };
+
   const handlePublish = async (id: string, newPrice: number) => {
     try {
       const res = await fetch(`/api/products/${id}/publish`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId: DASHBOARD_TENANT_ID, price: newPrice, status: "published" }),
+        body: JSON.stringify({ tenantId, price: newPrice, status: "published" }),
       });
 
       if (!res.ok) {
@@ -58,7 +121,7 @@ export default function Dashboard() {
       }
 
       setEditingProduct(null);
-      fetchProducts();
+      fetchProducts(tenantId);
     } catch (err) {
       console.error("Failed to publish:", err);
     }
@@ -72,9 +135,27 @@ export default function Dashboard() {
             Post2Cart Dashboard
           </h1>
           <p className="text-gray-500 mt-1">Manage your AI-generated products.</p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              value={tenantInput}
+              onChange={(e) => setTenantInput(e.target.value)}
+              placeholder="Enter tenant UUID"
+              className="w-full sm:w-[430px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            />
+            <button
+              onClick={handleApplyTenant}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Use Tenant
+            </button>
+          </div>
+          {tenantError && (
+            <p className="mt-2 text-sm text-red-600">{tenantError}</p>
+          )}
         </div>
         <div className="bg-white px-4 py-2 rounded-full shadow-sm text-sm font-medium border border-gray-100">
-          Tenant: <span className="text-blue-600">{DASHBOARD_TENANT_ID}</span>
+          Tenant: <span className="text-blue-600">{tenantId}</span>
         </div>
       </header>
 

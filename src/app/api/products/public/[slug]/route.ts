@@ -12,13 +12,21 @@ export async function GET(
             next: { revalidate: 60 } // ISR - Revalidate every 60 seconds
         });
 
-        if (!res.ok) {
-            if (res.status === 404) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-            throw new Error('Backend failed to return product');
+        const text = await res.text();
+        let payload: unknown = {};
+        if (text) {
+            try {
+                payload = JSON.parse(text);
+            } catch {
+                payload = { error: text };
+            }
         }
 
-        const data = await res.json();
-        return NextResponse.json(data);
+        if (!res.ok) {
+            return NextResponse.json(payload, { status: res.status });
+        }
+
+        return NextResponse.json(payload);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
