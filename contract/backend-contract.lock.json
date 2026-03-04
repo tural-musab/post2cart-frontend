@@ -1,0 +1,19 @@
+{
+    "version": "1.0.0",
+    "lockedAt": "2024-03-04T00:00:00Z",
+    "hash": "b4e859b4c05877f24090b8f10fb6e59e",
+    "manifestVersion": "1.0.0",
+    "services": {
+        "auth": {
+            "endpoints": [
+                "login"
+            ]
+        },
+        "webhooks": {
+            "endpoints": [
+                "socialPost",
+                "ffmpegJob"
+            ]
+        }
+    }
+}
