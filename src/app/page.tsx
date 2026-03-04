@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { ExternalLink, Edit2, PlayCircle, Loader2 } from "lucide-react";
 
-// Mock Tenant ID for now (usually comes from Session/Auth)
-const MOCK_TENANT_ID = "tenant-uuid-1";
+const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
+const DASHBOARD_TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || DEFAULT_TENANT_ID;
 
 interface Product {
   id: string;
@@ -29,11 +29,16 @@ export default function Dashboard() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products?tenantId=${MOCK_TENANT_ID}`);
+      const res = await fetch(`/api/products?tenantId=${encodeURIComponent(DASHBOARD_TENANT_ID)}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || errorData?.message || "Failed to fetch products");
+      }
       const data = await res.json();
-      setProducts(data || []);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch products:", err);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -44,12 +49,16 @@ export default function Dashboard() {
       const res = await fetch(`/api/products/${id}/publish`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId: MOCK_TENANT_ID, price: newPrice, status: "published" }),
+        body: JSON.stringify({ tenantId: DASHBOARD_TENANT_ID, price: newPrice, status: "published" }),
       });
-      if (res.ok) {
-        setEditingProduct(null);
-        fetchProducts(); // Refresh list
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || errorData?.message || "Failed to publish product");
       }
+
+      setEditingProduct(null);
+      fetchProducts();
     } catch (err) {
       console.error("Failed to publish:", err);
     }
@@ -65,7 +74,7 @@ export default function Dashboard() {
           <p className="text-gray-500 mt-1">Manage your AI-generated products.</p>
         </div>
         <div className="bg-white px-4 py-2 rounded-full shadow-sm text-sm font-medium border border-gray-100">
-          Tenant: <span className="text-blue-600">{MOCK_TENANT_ID}</span>
+          Tenant: <span className="text-blue-600">{DASHBOARD_TENANT_ID}</span>
         </div>
       </header>
 
