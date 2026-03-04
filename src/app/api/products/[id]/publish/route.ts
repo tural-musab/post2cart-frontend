@@ -1,13 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> },
+) {
     try {
+        const { id } = await params;
         const body = await request.json();
         const { tenantId, price, status } = body;
 
-        const res = await fetch(`${BACKEND_URL}/api/v1/products/${params.id}/publish`, {
+        const res = await fetch(`${BACKEND_URL}/api/v1/products/${id}/publish`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'

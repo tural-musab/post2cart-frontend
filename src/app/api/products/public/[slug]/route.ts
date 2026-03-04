@@ -1,10 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
 
-export async function GET(request: Request, { params }: { params: { slug: string } }) {
+export async function GET(
+    _request: NextRequest,
+    { params }: { params: Promise<{ slug: string }> },
+) {
     try {
-        const res = await fetch(`${BACKEND_URL}/api/v1/products/public/${params.slug}`, {
+        const { slug } = await params;
+        const res = await fetch(`${BACKEND_URL}/api/v1/products/public/${slug}`, {
             next: { revalidate: 60 } // ISR - Revalidate every 60 seconds
         });
 

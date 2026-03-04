@@ -5,6 +5,10 @@ import { ShoppingCart, CheckCircle2, ShieldCheck } from 'lucide-react';
 // SSR/ISR Component
 export const revalidate = 60; // Revalidate at most every 60 seconds
 
+type ProductPageProps = {
+    params: Promise<{ slug: string }>;
+};
+
 async function getProduct(slug: string) {
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
     // We fetch directly from the backend during Server Component rendering
@@ -17,8 +21,9 @@ async function getProduct(slug: string) {
     return res.json();
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-    const product = await getProduct(params.slug);
+export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+    const { slug } = await params;
+    const product = await getProduct(slug);
     if (!product) return { title: 'Product Not Found - Post2Cart' };
 
     return {
@@ -32,8 +37,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     };
 }
 
-export default async function ProductPage({ params }: { params: { slug: string } }) {
-    const product = await getProduct(params.slug);
+export default async function ProductPage({ params }: ProductPageProps) {
+    const { slug } = await params;
+    const product = await getProduct(slug);
 
     if (!product || product.status !== 'published') {
         notFound();

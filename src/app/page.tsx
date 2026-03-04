@@ -1,5 +1,6 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
 import { ExternalLink, Edit2, PlayCircle, Loader2 } from "lucide-react";
 
 // Mock Tenant ID for now (usually comes from Session/Auth)
