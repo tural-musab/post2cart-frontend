@@ -1,7 +1,11 @@
+import "./globals.css";
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-sans antialiased bg-gray-50">
-      {children}
-    </div>
+    <html lang="en">
+      <body className="font-sans antialiased bg-gray-50 text-gray-900">
+        {children}
+      </body>
+    </html>
   );
 }
