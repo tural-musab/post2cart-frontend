@@ -81,6 +81,7 @@ export function AppShell({
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <NavLink href="/dashboard" label={t('nav_dashboard')} />
             <NavLink href="/onboarding" label={t('nav_onboarding')} />
+            <NavLink href="/automation-ops" label={t('nav_automation_ops')} />
             <NavLink href="/settings" label={t('nav_settings')} />
           </div>
           <div className="mt-5">

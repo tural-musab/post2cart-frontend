@@ -8,13 +8,14 @@ import { AppShell } from '@/components/app-shell';
 import { useLanguage } from '@/components/language-provider';
 import { appApiFetch } from '@/lib/api';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
-import { BootstrapPayload, ProductItem } from '@/lib/types';
+import { AutomationOpsPayload, BootstrapPayload, ProductItem } from '@/lib/types';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { t } = useLanguage();
 
   const [bootstrap, setBootstrap] = useState<BootstrapPayload | null>(null);
+  const [automationOps, setAutomationOps] = useState<AutomationOpsPayload | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,12 +29,14 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [bootstrapPayload, productsPayload] = await Promise.all([
+      const [bootstrapPayload, productsPayload, opsPayload] = await Promise.all([
         appApiFetch<BootstrapPayload>('/api/app/bootstrap'),
         appApiFetch<ProductItem[]>('/api/app/products'),
+        appApiFetch<AutomationOpsPayload>('/api/app/automation/ops'),
       ]);
       setBootstrap(bootstrapPayload);
       setProducts(productsPayload ?? []);
+      setAutomationOps(opsPayload);
     } catch (requestError: unknown) {
       const message =
         requestError instanceof Error ? requestError.message : t('common_error');
@@ -156,6 +159,47 @@ export default function DashboardPage() {
               </Link>
             </div>
           )}
+
+          <section className="card rounded-2xl p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black text-[var(--ink-900)]">{t('dashboard_ops_title')}</h2>
+                <p className="mt-1 text-sm text-[var(--ink-500)]">{t('dashboard_ops_subtitle')}</p>
+              </div>
+              <Link
+                href="/automation-ops"
+                className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm font-bold text-[var(--ink-700)]"
+              >
+                {t('dashboard_ops_view_all')}
+              </Link>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-[var(--line)] bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-500)]">
+                  {t('dashboard_ops_pending_failed')}
+                </p>
+                <p className="mt-1 text-2xl font-black">{automationOps?.summary.pending_failed_count ?? 0}</p>
+              </div>
+              <div className="rounded-xl border border-[var(--line)] bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-500)]">
+                  {t('dashboard_ops_queue')}
+                </p>
+                <p className="mt-1 text-2xl font-black">
+                  {(automationOps?.summary.queued_retry_count ?? 0) +
+                    (automationOps?.summary.processing_retry_count ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[var(--line)] bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-500)]">
+                  {t('dashboard_ops_last_execution')}
+                </p>
+                <p className="mt-1 text-sm font-bold">
+                  {automationOps?.summary.last_execution?.status ?? t('dashboard_ops_none')}
+                </p>
+              </div>
+            </div>
+          </section>
 
           {products.length === 0 ? (
             <div className="card rounded-2xl px-6 py-10 text-center text-[var(--ink-500)]">
