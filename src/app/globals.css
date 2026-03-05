@@ -1,26 +1,99 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-0: #f6f3ed;
+  --bg-1: #fbfaf8;
+  --bg-2: #ece7dd;
+  --ink-900: #151515;
+  --ink-700: #3d3d3d;
+  --ink-600: #565656;
+  --ink-500: #676767;
+  --line: #dfd8ca;
+  --brand: #dc5c1d;
+  --brand-strong: #b84106;
+  --brand-soft: #fff1e8;
+  --ok: #167a3f;
+  --warn: #ba7a00;
+  --danger: #c13221;
+  --card: rgba(255, 255, 255, 0.9);
+  --shadow: 0 12px 30px rgba(21, 21, 21, 0.08);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  color: var(--ink-900);
+  font-family: var(--font-sans), sans-serif;
+  background:
+    radial-gradient(1200px 500px at 10% -20%, rgba(220, 92, 29, 0.18), transparent 65%),
+    radial-gradient(900px 500px at 100% 0%, rgba(41, 96, 255, 0.14), transparent 70%),
+    linear-gradient(165deg, var(--bg-0) 0%, var(--bg-1) 45%, var(--bg-2) 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.05) 0.7px, transparent 0.7px);
+  background-size: 4px 4px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+.app-shell {
+  animation: app-enter 0.4s ease-out;
+}
+
+@keyframes app-enter {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(3px);
+}
+
+.brand-title {
+  font-family: var(--font-serif), serif;
+}
+
+.status-ok {
+  color: var(--ok);
+}
+
+.status-warn {
+  color: var(--warn);
+}
+
+.status-danger {
+  color: var(--danger);
 }

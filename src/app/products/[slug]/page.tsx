@@ -1,135 +1,137 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { ShoppingCart, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, ShoppingBag } from 'lucide-react';
 
-// SSR/ISR Component
-export const revalidate = 60; // Revalidate at most every 60 seconds
+export const revalidate = 60;
 
 type ProductPageProps = {
-    params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string }>;
 };
 
 async function getProduct(slug: string) {
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
-    // We fetch directly from the backend during Server Component rendering
-    const res = await fetch(`${BACKEND_URL}/api/v1/products/public/${slug}`);
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:3000';
 
-    if (!res.ok) {
-        if (res.status === 404) return null;
-        throw new Error('Failed to fetch product');
-    }
-    return res.json();
+  const response = await fetch(`${backendUrl}/api/v1/products/public/${slug}`, {
+    next: { revalidate: 60 },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error('Failed to fetch product');
+  }
+
+  return response.json();
 }
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-    const { slug } = await params;
-    const product = await getProduct(slug);
-    if (!product) return { title: 'Product Not Found - Post2Cart' };
+  const { slug } = await params;
+  const product = await getProduct(slug);
 
+  if (!product) {
     return {
-        title: `${product.title} | ${product.price}$`,
-        description: product.ai_generated_metadata?.description || 'Exclusive product on Post2Cart',
-        openGraph: {
-            title: product.title,
-            description: product.ai_generated_metadata?.description,
-            images: [product.product_media?.find((m: any) => m.is_primary)?.file_url || ''],
-        }
+      title: 'Product Not Found | Post2Cart',
     };
+  }
+
+  return {
+    title: `${product.title} | $${Number(product.price ?? 0).toFixed(2)}`,
+    description:
+      product.ai_generated_metadata?.description || 'AI-generated product listing powered by Post2Cart.',
+    openGraph: {
+      title: product.title,
+      description: product.ai_generated_metadata?.description,
+      images: [product.product_media?.find((item: any) => item.is_primary)?.file_url || ''],
+    },
+  };
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-    const { slug } = await params;
-    const product = await getProduct(slug);
+  const { slug } = await params;
+  const product = await getProduct(slug);
 
-    if (!product || product.status !== 'published') {
-        notFound();
-    }
+  if (!product || product.status !== 'published') {
+    notFound();
+  }
 
-    const { title, price, ai_generated_metadata, product_media } = product;
-    const medias = product_media || [];
-    const primaryMedia = medias.find((m: any) => m.is_primary) || medias[0];
-    const otherMedias = medias.filter((m: any) => m.id !== primaryMedia?.id);
+  const mediaList = product.product_media || [];
+  const primaryMedia = mediaList.find((item: any) => item.is_primary) || mediaList[0];
 
-    return (
-        <div className="min-h-screen bg-white">
-            <header className="border-b border-gray-100 p-4 flex justify-center">
-                <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Post2Cart Setup</h2>
-            </header>
+  return (
+    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="card rounded-3xl p-6">
+          <Image
+            src="/brand/logo-p2c.jpg"
+            width={512}
+            height={279}
+            alt="Post2Cart"
+            className="h-14 w-auto rounded-lg object-contain"
+          />
+          <p className="mt-1 text-sm text-[var(--ink-500)]">AI-powered social commerce listing</p>
+        </header>
 
-            <main className="max-w-6xl mx-auto px-4 py-8 md:py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-
-                    {/* Media Gallery (Left) */}
-                    <div className="space-y-4">
-                        <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden shadow-sm border border-gray-100 relative group">
-                            {primaryMedia ? (
-                                primaryMedia.media_type === 'video' ? (
-                                    <video src={primaryMedia.file_url} controls className="w-full h-full object-cover" />
-                                ) : (
-                                    <img src={primaryMedia.file_url} alt={title} className="w-full h-full object-cover" />
-                                )
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-400">No media available</div>
-                            )}
-                        </div>
-
-                        {/* Thumbnails */}
-                        {otherMedias.length > 0 && (
-                            <div className="grid grid-cols-4 gap-4">
-                                {otherMedias.slice(0, 4).map((media: any) => (
-                                    <div key={media.id} className="aspect-square rounded-lg overflow-hidden border border-gray-100">
-                                        {media.media_type === 'video' ? (
-                                            <div className="w-full h-full bg-black/10 flex items-center justify-center text-xs">Video</div>
-                                        ) : (
-                                            <img src={media.file_url} className="w-full h-full object-cover opacity-70 hover:opacity-100 transition-opacity cursor-pointer" />
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Product Details (Right) */}
-                    <div className="flex flex-col">
-                        <div className="mb-2 flex items-center gap-2 text-sm text-green-600 font-medium bg-green-50 w-max px-3 py-1 rounded-full">
-                            <CheckCircle2 className="w-4 h-4" /> In Stock & Ready to Ship
-                        </div>
-
-                        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-4">
-                            {title}
-                        </h1>
-
-                        <div className="text-4xl font-bold text-blue-600 mb-8">
-                            ${price ? Number(price).toFixed(2) : "0.00"}
-                        </div>
-
-                        <div className="prose prose-gray mb-10 max-w-none">
-                            <p className="text-lg text-gray-600 leading-relaxed">
-                                {ai_generated_metadata?.description || "A wonderful product exclusively listed here."}
-                            </p>
-                        </div>
-
-                        <div className="space-y-4 mb-10">
-                            {ai_generated_metadata?.features?.map((feat: string, i: number) => (
-                                <div key={i} className="flex items-center gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-gray-700 font-medium">{feat}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-lg">
-                            <ShoppingCart className="w-5 h-5" /> Add to Cart — ${price}
-                        </button>
-
-                        <div className="mt-6 flex items-center justify-center gap-2 text-gray-500 text-sm">
-                            <ShieldCheck className="w-4 h-4" /> SECURE CHECKOUT • 30-DAY RETURNS
-                        </div>
-                    </div>
+        <main className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="card rounded-3xl p-4 md:p-6">
+            <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-zinc-100">
+              {primaryMedia ? (
+                primaryMedia.media_type === 'video' ? (
+                  <video src={primaryMedia.file_url} controls className="aspect-square w-full object-cover" />
+                ) : (
+                  <img src={primaryMedia.file_url} alt={product.title} className="aspect-square w-full object-cover" />
+                )
+              ) : (
+                <div className="flex aspect-square items-center justify-center text-sm text-[var(--ink-500)]">
+                  No media available
                 </div>
-            </main>
-        </div>
-    );
+              )}
+            </div>
+          </section>
+
+          <section className="card rounded-3xl p-6 md:p-8">
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" /> VERIFIED LISTING
+            </div>
+
+            <h1 className="mt-4 text-3xl font-black leading-tight text-[var(--ink-900)] md:text-4xl">
+              {product.title}
+            </h1>
+            <p className="mt-4 text-4xl font-black text-[var(--brand)]">
+              ${Number(product.price ?? 0).toFixed(2)}
+            </p>
+
+            <p className="mt-6 text-base leading-relaxed text-[var(--ink-600)]">
+              {product.ai_generated_metadata?.description ||
+                'AI-generated product listing from social content.'}
+            </p>
+
+            {Array.isArray(product.ai_generated_metadata?.features) && (
+              <ul className="mt-6 space-y-3">
+                {product.ai_generated_metadata.features.map((feature: string, index: number) => (
+                  <li key={`${feature}-${index}`} className="flex items-center gap-2 text-sm font-semibold">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <button
+              type="button"
+              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-3 text-sm font-black text-white hover:bg-[var(--brand-strong)]"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Add to Cart
+            </button>
+
+            <p className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[var(--ink-500)]">
+              <ShieldCheck className="h-4 w-4" />
+              Secure checkout and protected payment flow
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
 }
